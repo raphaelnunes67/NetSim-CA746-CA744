@@ -50,6 +50,13 @@ class StoreData:
 
         return new_simulation.id
 
+    def erase_last_simulation(self):
+        last_simulation = self.session.query(Simulation).order_by(Simulation.id.desc()).first()
+
+        if last_simulation:
+            self.session.delete(last_simulation)
+            self.session.commit()
+
     def save_voltages_data(self, simulation_id: int, n_res: int, n_day: int, voltages_v1: list, voltages_v2: list,
                            voltages_v3: list) -> None:
         all_voltages_data = [
@@ -285,204 +292,214 @@ class CktSimulation:
         ev_qty = round(self.loads_quantity * pl_ev / 100)
         pv_qty = round(self.loads_quantity * pl_pv / 100)
 
-        random_target_load_ev = random.sample(range(1, self.loads_quantity + 1), self.loads_quantity)
-        random_target_load_pv = random.sample(range(1, self.loads_quantity + 1), self.loads_quantity)
-        random_ev_kwh = self.generate_random_ev_kwh_list(EvKwh, ev_qty)
-        random_pv_shape_possibilities = self.generate_random_pv_shape_for_week(PVShapesPossibilities)
-        random_phases_ev = self.generate_random_phases(ev_qty)
-        random_phases_pv = self.generate_random_phases(pv_qty)
-        random_ev_chargers_power = self.generate_random_ev_charger_powers(ev_qty)
-        random_max_power_pv = self.generate_random_max_power_pv(pv_qty)
-        ev_shapes_by_day = dict()
-        for index in range(1, 8):
-            ev_shapes_by_day[index] = random.sample(list(range(1, 5001)), ev_qty)
-
         bulk_simulation_id = self.store_data.create_bulk_simulation(circuit_name=self.circuit_name, pl_pv=pl_pv,
                                                                     pl_ev=pl_ev,
                                                                     loops_quantity=loops_quantity,
                                                                     started_at=started_at)
+        simulation_index = 1
+        while True:
+            try:
+                random_target_load_ev = random.sample(range(1, self.loads_quantity + 1), self.loads_quantity)
+                random_target_load_pv = random.sample(range(1, self.loads_quantity + 1), self.loads_quantity)
+                random_ev_kwh = self.generate_random_ev_kwh_list(EvKwh, ev_qty)
+                random_pv_shape_possibilities = self.generate_random_pv_shape_for_week(PVShapesPossibilities)
+                random_phases_ev = self.generate_random_phases(ev_qty)
+                random_phases_pv = self.generate_random_phases(pv_qty)
+                random_ev_chargers_power = self.generate_random_ev_charger_powers(ev_qty)
+                random_max_power_pv = self.generate_random_max_power_pv(pv_qty)
+                ev_shapes_by_day = dict()
+                for index_ev in range(1, 8):
+                    ev_shapes_by_day[index_ev] = random.sample(list(range(1, 5001)), ev_qty)
 
-        for simulation_index in range(loops_quantity):
-            for control in ('no_control', 'voltvar', 'voltwatt'):
-                comp_total = 0
-                simulation_id = self.store_data.save_simulation(bulk_simulation_id, control_mode=control)
-                for n_day, pv_shape_possibility in enumerate(random_pv_shape_possibilities):
-                    self.dss_ckt = dss.NewContext()
-                    self.dss_ckt.Basic.DataPath('./')
-                    self.dss_ckt.Basic.Reset()
-                    self.dss_ckt.Text.Command(f'Redirect {self.target_file}')
+                for control in ('no_control', 'voltvar', 'voltwatt'):
+                    comp_total = 0
+                    simulation_id = self.store_data.save_simulation(bulk_simulation_id, control_mode=control)
+                    for n_day, pv_shape_possibility in enumerate(random_pv_shape_possibilities):
+                        self.dss_ckt = dss.NewContext()
+                        self.dss_ckt.Basic.DataPath('./')
+                        self.dss_ckt.Text.Command(f'Redirect {self.target_file}')
 
-                    if n_day == 6:
-                        self.target_loads = self.target_loads.replace('-WE', '-SA')
-                    elif n_day == 7:
-                        self.target_loads = self.target_loads.replace('-WE', '-SU')
+                        if n_day == 6:
+                            self.target_loads = self.target_loads.replace('-WE', '-SA')
+                        elif n_day == 7:
+                            self.target_loads = self.target_loads.replace('-WE', '-SU')
 
-                    self.dss_ckt.Text.Commands(self.target_loads)
+                        self.dss_ckt.Text.Commands(self.target_loads)
 
-                    for i in range(1, ev_qty + 1):
-                        self.dss_ckt.Text.Command(
-                            f'New loadshape.shape_ev{i} '
-                            f'npts=1440 '
-                            f'minterval=1 '
-                            f'mult=(file=data/electrical_vehicles/ev_shapes_charge.csv, '
-                            f'col={ev_shapes_by_day[n_day + 1][i - 1]})'
-                        )
-
-                        phase_a, phase_b = random_phases_ev[i - 1]
-
-                        self.dss_ckt.Text.Command(
-                            f'New Storage.ev_{i} '
-                            f'bus1=EVRES{random_target_load_ev[i - 1]}.{phase_a}.{phase_b} '
-                            'kV=0.220 '
-                            f'kWhrated={random_ev_kwh[i - 1]} '
-                            f'kW={random_ev_chargers_power[i - 1]} '
-                            'pf=0.92 '
-                            'conn=delta '
-                            'kvarmax=0.44 '
-                            'kvarmaxabs=0.44 '
-                            'dispmode=follow '
-                            f'daily=shape_ev{i} '
-                            'model=1 '
-                            'phases=2 '
-                            'State=CHARGING '
-                            '%stored=0'
-                        )
-
-                        if control == 'voltwatt':
+                        for i in range(1, ev_qty + 1):
                             self.dss_ckt.Text.Command(
-                                f'New InvControl.voltwatt_ev{i} '
-                                'mode=voltwatt '
-                                'voltage_curvex_ref=rated '
-                                'voltwattCH_curve=vw_curve_ev '
-                                'refReactivePower=VARMAX '
-                                'monVoltageCalc=MAX '
-                                'RiseFallLimit=-1 '
-                                'voltwattYaxis=PAVAILABLEPU '
-                                'voltageChangeTolerance=0.01 '
-                                'activePChangeTolerance=0.01 '
-                                'deltaP_factor=0.1 '
-                                'eventLog=yes '
-                                'enabled=true '
-                                f'DERlist=(Storage.ev_{i})'
-                            )
-                        elif control == 'voltvar':
-                            self.dss_ckt.Text.Command(
-                                f'New InvControl.voltvar_ev{i} '
-                                'mode=voltvar '
-                                'voltage_curvex_ref=rated '
-                                'refReactivePower=VARMAX '
-                                'vvc_curve1=vv_curve '
-                                'voltageChangeTolerance=0.01 '
-                                'varChangeTolerance=0.01 '
-                                'deltaQ_factor=-1 '
-                                'eventLog=yes '
-                                'enabled=true '
-                                f'DERlist=(Storage.ev_{i})'
+                                f'New loadshape.shape_ev{i} '
+                                f'npts=1440 '
+                                f'minterval=1 '
+                                f'mult=(file=data/electrical_vehicles/ev_shapes_charge.csv, '
+                                f'col={ev_shapes_by_day[n_day + 1][i - 1]})'
                             )
 
-                    for i in range(1, pv_qty + 1):
-                        phase_a, phase_b = random_phases_pv[i - 1]
-                        self.dss_ckt.Text.Command(
-                            f'New PvSystem.pv_{i} '
-                            f'bus1=PVRES{random_target_load_pv[i - 1]}.{phase_a}.{phase_b} '
-                            'phases=2 '
-                            'conn=delta '
-                            'kvarmax=0.44 '
-                            'kvarmaxabs=0.44 '
-                            'enabled=true '
-                            'kV=0.220 '
-                            f'kVA={random_max_power_pv[i - 1] + 4} '
-                            f'Pmpp={random_max_power_pv[i - 1]} '
-                            'pf=0.92 '
-                            f'daily={pv_shape_possibility} '
-                            '%cutIn=0.1 '
-                            '%cutOut=0.1'
-                        )
+                            phase_a, phase_b = random_phases_ev[i - 1]
 
-                        if control == 'voltwatt':
                             self.dss_ckt.Text.Command(
-                                f'New InvControl.voltwatt_pv{i} '
-                                'mode=voltwatt '
-                                'voltage_curvex_ref=rated '
-                                'voltwatt_curve=vw_curve_pv '
-                                'refReactivePower=VARMAX '
-                                'monVoltageCalc=MAX '
-                                'RiseFallLimit=-1 '
-                                'voltwattYaxis=PAVAILABLEPU '
-                                'voltageChangeTolerance=0.01 '
-                                'activePChangeTolerance=0.01 '
-                                'deltaP_factor=0.1 '
-                                'eventLog=yes '
-                                'enabled=true '
-                                f'DERlist=(PvSystem.pv_{i})'
-                            )
-                        elif control == 'voltvar':
-                            self.dss_ckt.Text.Command(
-                                f'New InvControl.voltvar_pv{i} '
-                                'mode=voltvar '
-                                'voltage_curvex_ref=rated '
-                                'refReactivePower=VARMAX '
-                                'vvc_curve1=vv_curve '
-                                'voltageChangeTolerance=0.01 '
-                                'varChangeTolerance=0.01 '
-                                'deltaQ_factor=0.1 '
-                                'eventLog=yes '
-                                'enabled=true '
-                                f'DERlist=(PvSystem.pv_{i})'
+                                f'New Storage.ev_{i} '
+                                f'bus1=EVRES{random_target_load_ev[i - 1]}.{phase_a}.{phase_b} '
+                                'kV=0.220 '
+                                f'kWhrated={random_ev_kwh[i - 1]} '
+                                f'kW={random_ev_chargers_power[i - 1]} '
+                                'pf=0.92 '
+                                'conn=delta '
+                                'kvarmax=0.44 '
+                                'kvarmaxabs=0.44 '
+                                'dispmode=follow '
+                                f'daily=shape_ev{i} '
+                                'model=1 '
+                                'phases=2 '
+                                'State=CHARGING '
+                                '%stored=0'
                             )
 
-                    for i in range(1, self.loads_quantity + 1):
-                        self.dss_ckt.Text.Command(
-                            f'New Monitor.residence{i}_PV_{pl_pv}_EV_{pl_ev}_{control}'
-                            f'_voltage_day_{n_day + 1} '
-                            f'element=Load.residence{i} terminal=1 mode=0'
-                        )
-                        self.dss_ckt.Text.Command(
-                            f'New Monitor.residence{i}_PV_{pl_pv}_EV_{pl_ev}_{control}'
-                            f'_power_day_{n_day + 1} '
-                            f'element=Load.residence{i} terminal=1 mode=1 ppolar=no'
-                        )
-                        self.dss_ckt.Text.Command(
-                            f'New EnergyMeter.residence{i}_PV_{pl_pv}_{control}_day_{n_day + 1} '
-                            f'element=line.LINE_PV{i} terminal=1'
-                        )
+                            if control == 'voltwatt':
+                                self.dss_ckt.Text.Command(
+                                    f'New InvControl.voltwatt_ev{i} '
+                                    'mode=voltwatt '
+                                    'voltage_curvex_ref=rated '
+                                    'voltwattCH_curve=vw_curve_ev '
+                                    'refReactivePower=VARMAX '
+                                    'monVoltageCalc=MAX '
+                                    'RiseFallLimit=-1 '
+                                    'voltwattYaxis=PAVAILABLEPU '
+                                    'voltageChangeTolerance=0.01 '
+                                    'activePChangeTolerance=0.01 '
+                                    'deltaP_factor=0.1 '
+                                    'eventLog=yes '
+                                    'enabled=true '
+                                    f'DERlist=(Storage.ev_{i})'
+                                )
+                            elif control == 'voltvar':
+                                self.dss_ckt.Text.Command(
+                                    f'New InvControl.voltvar_ev{i} '
+                                    'mode=voltvar '
+                                    'voltage_curvex_ref=rated '
+                                    'refReactivePower=VARMAX '
+                                    'vvc_curve1=vv_curve '
+                                    'voltageChangeTolerance=0.01 '
+                                    'varChangeTolerance=0.01 '
+                                    'deltaQ_factor=-1 '
+                                    'eventLog=yes '
+                                    'enabled=true '
+                                    f'DERlist=(Storage.ev_{i})'
+                                )
+
+                        for i in range(1, pv_qty + 1):
+                            phase_a, phase_b = random_phases_pv[i - 1]
+                            self.dss_ckt.Text.Command(
+                                f'New PvSystem.pv_{i} '
+                                f'bus1=PVRES{random_target_load_pv[i - 1]}.{phase_a}.{phase_b} '
+                                'phases=2 '
+                                'conn=delta '
+                                'kvarmax=0.44 '
+                                'kvarmaxabs=0.44 '
+                                'enabled=true '
+                                'kV=0.220 '
+                                f'kVA={random_max_power_pv[i - 1] + 4} '
+                                f'Pmpp={random_max_power_pv[i - 1]} '
+                                'pf=0.92 '
+                                f'daily={pv_shape_possibility} '
+                                '%cutIn=0.1 '
+                                '%cutOut=0.1'
+                            )
+
+                            if control == 'voltwatt':
+                                self.dss_ckt.Text.Command(
+                                    f'New InvControl.voltwatt_pv{i} '
+                                    'mode=voltwatt '
+                                    'voltage_curvex_ref=rated '
+                                    'voltwatt_curve=vw_curve_pv '
+                                    'refReactivePower=VARMAX '
+                                    'monVoltageCalc=MAX '
+                                    'RiseFallLimit=-1 '
+                                    'voltwattYaxis=PAVAILABLEPU '
+                                    'voltageChangeTolerance=0.01 '
+                                    'activePChangeTolerance=0.01 '
+                                    'deltaP_factor=0.1 '
+                                    'eventLog=yes '
+                                    'enabled=true '
+                                    f'DERlist=(PvSystem.pv_{i})'
+                                )
+                            elif control == 'voltvar':
+                                self.dss_ckt.Text.Command(
+                                    f'New InvControl.voltvar_pv{i} '
+                                    'mode=voltvar '
+                                    'voltage_curvex_ref=rated '
+                                    'refReactivePower=VARMAX '
+                                    'vvc_curve1=vv_curve '
+                                    'voltageChangeTolerance=0.01 '
+                                    'varChangeTolerance=0.01 '
+                                    'deltaQ_factor=0.1 '
+                                    'eventLog=yes '
+                                    'enabled=true '
+                                    f'DERlist=(PvSystem.pv_{i})'
+                                )
+
+                        for i in range(1, self.loads_quantity + 1):
+                            self.dss_ckt.Text.Command(
+                                f'New Monitor.residence{i}_PV_{pl_pv}_EV_{pl_ev}_{control}'
+                                f'_voltage_day_{n_day + 1} '
+                                f'element=Load.residence{i} terminal=1 mode=0'
+                            )
+                            self.dss_ckt.Text.Command(
+                                f'New Monitor.residence{i}_PV_{pl_pv}_EV_{pl_ev}_{control}'
+                                f'_power_day_{n_day + 1} '
+                                f'element=Load.residence{i} terminal=1 mode=1 ppolar=no'
+                            )
+                            self.dss_ckt.Text.Command(
+                                f'New EnergyMeter.residence{i}_PV_{pl_pv}_{control}_day_{n_day + 1} '
+                                f'element=line.LINE_PV{i} terminal=1'
+                            )
+
+                            self.dss_ckt.Text.Command(
+                                f'New EnergyMeter.residence{i}_EV_{pl_ev}_{control}_day_{n_day + 1} '
+                                f'element=line.LINE_EV{i} terminal=1'
+                            )
 
                         self.dss_ckt.Text.Command(
-                            f'New EnergyMeter.residence{i}_EV_{pl_ev}_{control}_day_{n_day + 1} '
-                            f'element=line.LINE_EV{i} terminal=1'
+                            f'New Energymeter.transformer_percentage_PV_{pl_pv}_EV_{pl_ev}_{control}_day_{n_day + 1} '
+                            f'element=Transformer.{self.circuit_name} terminal=1'
                         )
 
-                    self.dss_ckt.Text.Command(
-                        f'New Energymeter.transformer_percentage_PV_{pl_pv}_EV_{pl_ev}_{control}_day_{n_day + 1} '
-                        f'element=Transformer.{self.circuit_name} terminal=1'
-                    )
+                        self.dss_ckt.Text.Command('Set voltagebases=[13.8 0.220]')
+                        self.dss_ckt.Text.Command('Calcvoltagebases')
+                        self.dss_ckt.Text.Command('Set mode=daily')
+                        self.dss_ckt.Text.Command('Set stepsize=1m')
+                        self.dss_ckt.Text.Command('Set number=1440')
+                        self.dss_ckt.Text.Command('Set maxcontroliter=1000')
+                        self.dss_ckt.Text.Command('Set maxiterations=1000')
+                        self.dss_ckt.Text.Command('Set controlmode=time')
+                        self.dss_ckt.Solution.Solve()
 
-                    self.dss_ckt.Text.Command('Set voltagebases=[13.8 0.220]')
-                    self.dss_ckt.Text.Command('Calcvoltagebases')
-                    self.dss_ckt.Text.Command('Set mode=daily')
-                    self.dss_ckt.Text.Command('Set stepsize=1m')
-                    self.dss_ckt.Text.Command('Set number=1440')
-                    self.dss_ckt.Text.Command('Set maxcontroliter=100000')
-                    self.dss_ckt.Text.Command('Set maxiterations=100000')
-                    self.dss_ckt.Text.Command('Set controlmode=time')
-                    self.dss_ckt.Solution.Solve()
+                        comp_total_day = self.save_voltages_and_calculate_compensation_by_day(simulation_id, n_day)
 
-                    comp_total_day = self.save_voltages_and_calculate_compensation_by_day(simulation_id, n_day)
+                        self.save_energy_meters(simulation_id, n_day)
 
-                    self.save_energy_meters(simulation_id, n_day)
+                        self.logger.info(
+                            f'Simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}')
 
-                    self.logger.info(
-                        f'Simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}')
+                        comp_total += comp_total_day
 
-                    comp_total += comp_total_day
+                    self.logger.info(f'Comp with {control}: R$ {round(comp_total, 2)}')
 
-                self.logger.info(f'Comp with {control}: R$ {round(comp_total, 2)}')
-                self.store_data.save_compensation(simulation_id, compensation=comp_total)
-            self.logger.info(f'Simulation: {simulation_index + 1}')
-        finished_at = datetime.now()
-        self.store_data.insert_bulk_simulation_finished_at(bulk_simulation_id=bulk_simulation_id, finished_at=finished_at)
-        self.logger.info('---- Bulk Simulation Done -----')
+                    self.store_data.save_compensation(simulation_id, compensation=comp_total)
 
-        delta = finished_at - started_at
-        formatted_duration = f"{delta.seconds // 3600}h {delta.seconds % 3600 // 60} min {delta.seconds % 60} s"
-        self.logger.info(f'Elapsed time: {formatted_duration}')
+                self.logger.info(f'Simulation: {simulation_index}')
+                simulation_index = simulation_index + 1
+                if simulation_index > loops_quantity:
+                    break
+
+            except Exception as e:
+                self.logger.debug(f'DSS error: {e}')
+                self.store_data.erase_last_simulation()
+
+            finished_at = datetime.now()
+            self.store_data.insert_bulk_simulation_finished_at(bulk_simulation_id=bulk_simulation_id, finished_at=finished_at)
+            self.logger.info('---- Bulk Simulation Done -----')
+
+            delta = finished_at - started_at
+            formatted_duration = f"{delta.seconds // 3600}h {delta.seconds % 3600 // 60} min {delta.seconds % 60} s"
+            self.logger.info(f'Elapsed time: {formatted_duration}')
