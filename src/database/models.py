@@ -29,6 +29,8 @@ class Simulation(Base):
     energy_meters = relationship("EnergyMeter", back_populates="simulation")
     compensations = relationship("Compensation", back_populates="simulation")
     losses = relationship("Loss", back_populates="simulation")
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
 
 
 class VoltageData(Base):

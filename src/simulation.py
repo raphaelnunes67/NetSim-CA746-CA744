@@ -1,8 +1,11 @@
-from logging import Logger
-from operator import index
+"""
+This is a script to perform simulations and store data in database
+Bulk Simulation: Collection of simulations with
+Simulation: 7 day of simple simulation (OpenDSS)
+"""
 
+from logging import Logger
 from opendssdirect import dss
-from time import time
 from datetime import datetime
 from common.constants import *
 from common.drpdrc import DrpDrc
@@ -29,7 +32,7 @@ class StoreData:
 
         return new_bulk_simulation.id
 
-    def insert_bulk_simulation_finished_at(self, bulk_simulation_id: int, finished_at: datetime ) -> int:
+    def insert_bulk_simulation_finished_at(self, bulk_simulation_id: int, finished_at: datetime) -> int:
         bulk_simulation = self.session.query(BulkSimulation).filter_by(id=bulk_simulation_id).first()
 
         if bulk_simulation:
@@ -39,16 +42,26 @@ class StoreData:
         else:
             raise ValueError(f"BulkSimulation with id {bulk_simulation_id} not found")
 
-
-    def save_simulation(self, bulk_simulation_id: int, control_mode: str) -> int:
+    def save_simulation(self, bulk_simulation_id: int, control_mode: str, started_at: datetime) -> int:
         new_simulation = Simulation(
             bulk_simulation_id=bulk_simulation_id,
-            control_mode=control_mode
+            control_mode=control_mode,
+            started_at=started_at
         )
         self.session.add(new_simulation)
         self.session.commit()
 
         return new_simulation.id
+
+    def insert_simulation_finished_at(self, simulation_id: int, finished_at: datetime) -> int:
+        simulation = self.session.query(Simulation).filter_by(id=simulation_id).first()
+
+        if simulation:
+            simulation.finished_at = finished_at
+            self.session.commit()
+            return simulation.id
+        else:
+            raise ValueError(f"BulkSimulation with id {simulation_id} not found")
 
     def erase_last_simulation(self):
         last_simulation = self.session.query(Simulation).order_by(Simulation.id.desc()).first()
@@ -102,7 +115,6 @@ class StoreData:
         )
         self.session.add(new_losses_data)
         self.session.commit()
-
 
 
 class CktSimulation:
@@ -209,7 +221,7 @@ class CktSimulation:
                         bus='EV'
                     )
 
-                    n_res_ev +=1
+                    n_res_ev += 1
 
             elif self.dss_ckt.Meters.Name().find('transformer') != -1:
                 self.store_data.save_losses(
@@ -287,7 +299,7 @@ class CktSimulation:
         if pl_ev not in PL_PERCENTAGES and pl_pv not in PL_PERCENTAGES:
             raise Exception('Penetration level is not valid')
 
-        started_at = datetime.now()
+        bulk_simulation_started_at = datetime.now()
 
         ev_qty = round(self.loads_quantity * pl_ev / 100)
         pv_qty = round(self.loads_quantity * pl_pv / 100)
@@ -295,7 +307,7 @@ class CktSimulation:
         bulk_simulation_id = self.store_data.create_bulk_simulation(circuit_name=self.circuit_name, pl_pv=pl_pv,
                                                                     pl_ev=pl_ev,
                                                                     loops_quantity=loops_quantity,
-                                                                    started_at=started_at)
+                                                                    started_at=bulk_simulation_started_at)
         simulation_index = 1
         while True:
             try:
@@ -313,7 +325,12 @@ class CktSimulation:
 
                 for control in ('no_control', 'voltvar', 'voltwatt'):
                     comp_total = 0
-                    simulation_id = self.store_data.save_simulation(bulk_simulation_id, control_mode=control)
+                    simulation_started_at = datetime.now()
+                    simulation_id = self.store_data.save_simulation(
+                        bulk_simulation_id=bulk_simulation_id,
+                        control_mode=control,
+                        started_at=simulation_started_at
+                    )
                     for n_day, pv_shape_possibility in enumerate(random_pv_shape_possibilities):
                         self.dss_ckt = dss.NewContext()
                         self.dss_ckt.Basic.DataPath('./')
@@ -487,7 +504,18 @@ class CktSimulation:
 
                     self.store_data.save_compensation(simulation_id, compensation=comp_total)
 
-                self.logger.info(f'Simulation: {simulation_index}')
+                simulation_finished_at = datetime.now()
+                self.logger.info(f'Simulation: {simulation_index} finished')
+
+                delta_ = simulation_finished_at - simulation_started_at
+                formatted_duration_ = f"{delta_.seconds // 3600}h {delta_.seconds % 3600 // 60} min {delta_.seconds % 60} s"
+                self.logger.info(f'Elapsed time: {formatted_duration_}')
+
+                self.store_data.insert_simulation_finished_at(
+                    simulation_id=simulation_id,
+                    finished_at=simulation_finished_at
+                )
+
                 simulation_index = simulation_index + 1
                 if simulation_index > loops_quantity:
                     break
@@ -496,10 +524,13 @@ class CktSimulation:
                 self.logger.debug(f'DSS error: {e}')
                 self.store_data.erase_last_simulation()
 
-            finished_at = datetime.now()
-            self.store_data.insert_bulk_simulation_finished_at(bulk_simulation_id=bulk_simulation_id, finished_at=finished_at)
-            self.logger.info('---- Bulk Simulation Done -----')
+        bulk_simulation_finished_at = datetime.now()
+        self.store_data.insert_bulk_simulation_finished_at(
+            bulk_simulation_id=bulk_simulation_id,
+            finished_at=bulk_simulation_finished_at
+        )
+        self.logger.info('---- Bulk Simulation Done -----')
 
-            delta = finished_at - started_at
-            formatted_duration = f"{delta.seconds // 3600}h {delta.seconds % 3600 // 60} min {delta.seconds % 60} s"
-            self.logger.info(f'Elapsed time: {formatted_duration}')
+        delta = bulk_simulation_finished_at - bulk_simulation_started_at
+        formatted_duration = f"{delta.seconds // 3600}h {delta.seconds % 3600 // 60} min {delta.seconds % 60} s"
+        self.logger.info(f'Elapsed time: {formatted_duration}')

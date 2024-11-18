@@ -19,7 +19,7 @@ if __name__ == '__main__':
         circuit_name='ca744', loads_quantity=47, target_loads=TARGET_LOADS_CA744, target_file='dss/ca744.dss',
         _logger=simulation_logger
     ).execute_case_with_pl(
-        loops_quantity=100,
+        loops_quantity=3,
         pl_ev=20,
         pl_pv=0
     )
