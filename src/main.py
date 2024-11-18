@@ -5,6 +5,7 @@ from simulation import CktSimulation
 if __name__ == '__main__':
     log = Log()
     simulation_logger = log.set_logger_file_and_stdout('SIMULATION')
+
     # CktSimulation(
     #     circuit_name='ca746', loads_quantity=26, target_loads=TARGET_LOADS_CA746, target_file='dss/ca746.dss',
     #     _logger=simulation_logger
