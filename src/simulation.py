@@ -1,7 +1,7 @@
 """
 This is a script to perform simulations and store data in database
-Bulk Simulation: Collection of simulations with
-Simulation: 7 day of simple simulation (OpenDSS)
+Bulk Simulation: Collection of simulations with 3 control possibilities, case with 7 days;
+Simulation: 7 day of simple simulation (OpenDSS);
 """
 
 from logging import Logger
@@ -64,10 +64,14 @@ class StoreData:
             raise ValueError(f"BulkSimulation with id {simulation_id} not found")
 
     def erase_last_simulation(self):
-        last_simulation = self.session.query(Simulation).order_by(Simulation.id.desc()).first()
-
-        if last_simulation:
-            self.session.delete(last_simulation)
+        last_simulation_id = (
+            self.session.query(Simulation.id)
+            .order_by(Simulation.id.desc())
+            .limit(1)
+            .scalar()
+        )
+        if last_simulation_id:
+            self.session.query(Simulation).filter(Simulation.id == last_simulation_id).delete(synchronize_session=False)
             self.session.commit()
 
     def save_voltages_data(self, simulation_id: int, n_res: int, n_day: int, voltages_v1: list, voltages_v2: list,
@@ -292,7 +296,7 @@ class CktSimulation:
 
         self.logger.info('---- Starting Simulation LOOP ----')
         self.calculate_eusd_data()
-        self.logger.info(f'Simulation quantity: {loops_quantity}')
+        self.logger.info(f'Simulations quantity: {loops_quantity}')
         self.logger.info(f'Penetration level EV: {pl_ev}%')
         self.logger.info(f'Penetration level PV: {pl_pv}%')
 
@@ -308,7 +312,7 @@ class CktSimulation:
                                                                     pl_ev=pl_ev,
                                                                     loops_quantity=loops_quantity,
                                                                     started_at=bulk_simulation_started_at)
-        simulation_index = 1
+        simulation_three_modes_index = 1
         while True:
             try:
                 random_target_load_ev = random.sample(range(1, self.loads_quantity + 1), self.loads_quantity)
@@ -496,28 +500,29 @@ class CktSimulation:
                         self.save_energy_meters(simulation_id, n_day)
 
                         self.logger.info(
-                            f'Simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}')
+                            f'Daily simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}')
 
                         comp_total += comp_total_day
 
+                    self.logger.info('Simulation finished!')
                     self.logger.info(f'Comp with {control}: R$ {round(comp_total, 2)}')
 
                     self.store_data.save_compensation(simulation_id, compensation=comp_total)
 
-                simulation_finished_at = datetime.now()
-                self.logger.info(f'Simulation: {simulation_index} finished')
+                    simulation_finished_at = datetime.now()
 
-                delta_ = simulation_finished_at - simulation_started_at
-                formatted_duration_ = f"{delta_.seconds // 3600}h {delta_.seconds % 3600 // 60} min {delta_.seconds % 60} s"
-                self.logger.info(f'Elapsed time: {formatted_duration_}')
+                    delta_ = simulation_finished_at - simulation_started_at
+                    formatted_duration_ = f"{delta_.seconds // 3600}h {delta_.seconds % 3600 // 60} min {delta_.seconds % 60} s"
+                    self.logger.info(f'Elapsed time: {formatted_duration_}')
 
-                self.store_data.insert_simulation_finished_at(
-                    simulation_id=simulation_id,
-                    finished_at=simulation_finished_at
-                )
+                    self.store_data.insert_simulation_finished_at(
+                        simulation_id=simulation_id,
+                        finished_at=simulation_finished_at
+                    )
 
-                simulation_index = simulation_index + 1
-                if simulation_index > loops_quantity:
+                self.logger.info(f'Simulation three modes: {simulation_three_modes_index} finished')
+                simulation_three_modes_index = simulation_three_modes_index + 1
+                if simulation_three_modes_index > loops_quantity:
                     break
 
             except Exception as e:
