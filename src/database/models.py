@@ -14,23 +14,34 @@ class BulkSimulation(Base):
     started_at = Column(DateTime)
     finished_at = Column(DateTime)
 
-    simulations = relationship("Simulation", back_populates="bulk_simulation")
+    loop_simulations = relationship("LoopSimulation", back_populates="bulk_simulation") # One to many
+
+
+class LoopSimulation(Base):
+    __tablename__ = 'loop_simulations'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bulk_simulation_id = Column(Integer, ForeignKey('bulk_simulations.id'))
+
+    bulk_simulation = relationship("BulkSimulation", back_populates="loop_simulations") # Many to One
+    simulations = relationship("Simulation", back_populates="loop_simulation") # One to many
 
 
 class Simulation(Base):
     __tablename__ = 'simulations'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    bulk_simulation_id = Column(Integer, ForeignKey('bulk_simulations.id'))
     control_mode = Column(String(12), nullable=False)
+    loop_simulation_id = Column(Integer, ForeignKey('loop_simulations.id'))
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
 
-    bulk_simulation = relationship("BulkSimulation", back_populates="simulations")
+    loop_simulation = relationship("LoopSimulation", back_populates="simulations") # Many to one
+    # One to many
     voltages = relationship("VoltageData", back_populates="simulation")
     energy_meters = relationship("EnergyMeter", back_populates="simulation")
     compensations = relationship("Compensation", back_populates="simulation")
     losses = relationship("Loss", back_populates="simulation")
-    started_at = Column(DateTime)
-    finished_at = Column(DateTime)
 
 
 class VoltageData(Base):
@@ -80,9 +91,3 @@ class Loss(Base):
 
     simulation = relationship("Simulation", back_populates="losses")
 
-
-# Database engine and session setup
-engine = create_engine('sqlite:///database.db', echo=False)
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-session = Session()
