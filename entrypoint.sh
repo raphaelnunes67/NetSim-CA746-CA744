@@ -4,7 +4,7 @@ cd src
 
 PID_FILE="../script_pid.txt"
 
-nohup PYTHONPATH="$PWD../" venv/bin/python3 main.py &
+PYTHONPATH="$PWD/../" nohup ../venv/bin/python3 main.py &
 
 echo $! > "$PID_FILE"
 

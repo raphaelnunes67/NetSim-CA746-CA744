@@ -13,5 +13,14 @@ by electric vehicles on the electrical grid.
 
 ## Running this project
 
+
+## View and stop processes
+
+```sh
+ps aux | grep main.py
+ps -p $(cat script_pid.txt)
+kill $(cat script_pid.txt)
+```
+
 ## Licence
 
