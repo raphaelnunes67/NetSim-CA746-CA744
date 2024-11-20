@@ -8,7 +8,7 @@ import os
 
 def run_ca746(pl_ev: int, pl_pv: int, loops_quantity: int):
     log = Log()
-    simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV{pl_pv}')
+    simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV_{pl_pv}')
     CktSimulation(
         circuit_name='ca746', loads_quantity=26, target_loads=TARGET_LOADS_CA746, target_file='dss/ca746.dss',
         database_path=f'/mnt/d/database_ca746_ev_{pl_ev}_pv_{pl_pv}.db', _logger=simulation_logger
@@ -20,7 +20,7 @@ def run_ca746(pl_ev: int, pl_pv: int, loops_quantity: int):
 
 def run_ca744(pl_ev: int, pl_pv: int, loops_quantity: int):
     log = Log()
-    simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV{pl_pv}')
+    simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV_{pl_pv}')
     CktSimulation(
         circuit_name='ca744', loads_quantity=47, target_loads=TARGET_LOADS_CA744, target_file='dss/ca744.dss',
         database_path=f'/mnt/d/database_ca744_ev_{pl_ev}_pv_{pl_pv}.db', _logger=simulation_logger
