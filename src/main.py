@@ -60,6 +60,7 @@ if __name__ == '__main__':
     processes = [
         Process(target=run_ca746, args=(20, 0, 1000)),
         Process(target=run_ca746, args=(40, 0, 1000)),
+        Process(target=run_ca746, args=(60, 0, 1000)),
         Process(target=run_ca746, args=(80, 0, 1000)),
         Process(target=run_ca746, args=(100, 0, 1000)),
 
@@ -67,6 +68,7 @@ if __name__ == '__main__':
         Process(target=run_ca746, args=(0, 40, 1000)),
         Process(target=run_ca746, args=(0, 60, 1000)),
         Process(target=run_ca746, args=(0, 80, 1000)),
+        Process(target=run_ca746, args=(0, 100, 1000)),
     ]
 
     for process in processes:
