@@ -1,6 +1,6 @@
 """
 This is a script to perform simulations and store data in database
-Bulk Simulation: Collection of simulations with 3 control possibilities, case with 7 days;
+Loop Simulation: Collection of simulations with 3 control possibilities, case with 7 days;
 Simulation: 7 day of simple simulation (OpenDSS);
 """
 
@@ -519,10 +519,12 @@ class CktSimulation:
                         self.dss_ckt.Text.Command('Set mode=daily')
                         self.dss_ckt.Text.Command('Set stepsize=1m')
                         self.dss_ckt.Text.Command('Set number=1440')
-                        self.dss_ckt.Text.Command('Set maxcontroliter=1000')
-                        self.dss_ckt.Text.Command('Set maxiterations=1000')
+                        self.dss_ckt.Text.Command('Set maxcontroliter=100')
+                        self.dss_ckt.Text.Command('Set maxiterations=100')
                         self.dss_ckt.Text.Command('Set controlmode=time')
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Solving case')
                         self.dss_ckt.Solution.Solve()
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Solved!')
                         if not self.dss_ckt.Solution.Converged():
                             raise Exception('Solution not converged')
 
