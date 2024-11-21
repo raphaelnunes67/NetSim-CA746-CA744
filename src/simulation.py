@@ -198,14 +198,14 @@ class CktSimulation:
                 drp, drc, comp = ckt_drp_drc.calculate_from_voltages(v1_values, v2_values, v3_values)
                 comp_total_day += comp
 
-                self.store_data.save_voltages_data(
-                    simulation_id=simulation_id,
-                    n_res=load_index + 1,
-                    n_day=n_day + 1,
-                    voltages_v1=v1_values,
-                    voltages_v2=v2_values,
-                    voltages_v3=v3_values
-                )
+                # self.store_data.save_voltages_data(
+                #     simulation_id=simulation_id,
+                #     n_res=load_index + 1,
+                #     n_day=n_day + 1,
+                #     voltages_v1=v1_values,
+                #     voltages_v2=v2_values,
+                #     voltages_v3=v3_values
+                # )
 
                 load_index += 1
 
