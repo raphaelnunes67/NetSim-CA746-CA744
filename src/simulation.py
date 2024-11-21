@@ -358,7 +358,7 @@ class CktSimulation:
 
                 for n_day, pv_shape_possibility in enumerate(random_pv_shape_possibilities): # Days Loop
                     self.dss_ckt = dss.NewContext()
-                    self.dss_ckt._enable_exceptions(do_enable=False)
+                    # self.dss_ckt._enable_exceptions(do_enable=False)
                     self.dss_ckt.Basic.ClearAll()
                     self.dss_ckt.Basic.DataPath('./')
                     self.dss_ckt.Text.Command(f'Redirect {self.target_file}')
