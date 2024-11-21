@@ -529,17 +529,22 @@ class CktSimulation:
                             raise Exception('Solution not converged')
 
                         # self.dss_ckt.Solution.Cleanup()
-
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Calculating compensation')
                         comp_total_day = self.save_voltages_and_calculate_compensation_by_day(simulation_id, n_day)
-
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Compensation calculated!')
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Saving energy meters data')
                         self.save_energy_meters(simulation_id, n_day)
+                        self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Energy meters data saved!')
 
                         self.logger.info(
-                            f'Loop Simulation: {loop_simulations_index + 1} - Daily simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}')
+                            f'Loop Simulation: {loop_simulations_index + 1} - Daily simulation done. Day: {n_day + 1}, control: {control}, compensation: R$ {comp_total_day}'
+                        )
 
                         comp_total += comp_total_day
 
+                    self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Saving total compensation data')
                     self.store_data.save_compensation(simulation_id, compensation=comp_total)
+                    self.logger.info(f'Loop Simulation: {loop_simulations_index + 1} - Total compensation saved!')
 
                     simulation_finished_at = datetime.now()
 
