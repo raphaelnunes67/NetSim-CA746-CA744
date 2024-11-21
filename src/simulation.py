@@ -524,9 +524,9 @@ class CktSimulation:
                         self.dss_ckt.Text.Command('Set controlmode=time')
                         self.dss_ckt.Solution.Solve()
                         if not self.dss_ckt.Solution.Converged():
-                            self.logger.error('Solution not converged')
+                            raise Exception('Solution not converged')
 
-                        self.dss_ckt.Solution.Cleanup()
+                        # self.dss_ckt.Solution.Cleanup()
 
                         comp_total_day = self.save_voltages_and_calculate_compensation_by_day(simulation_id, n_day)
 
@@ -553,7 +553,7 @@ class CktSimulation:
 
                 self.logger.info(f'---- Loop simulation: {loop_simulations_index + 1} finished -----')
         except Exception as e:
-            self.logger.error('Error in simulation')
+            self.logger.error(f'Error in simulation: {e}')
         bulk_simulation_finished_at = datetime.now()
         self.store_data.insert_bulk_simulation_finished_at(
             bulk_simulation_id=bulk_simulation_id,
