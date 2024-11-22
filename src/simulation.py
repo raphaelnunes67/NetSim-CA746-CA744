@@ -133,6 +133,75 @@ class StoreData:
         self.session.add(new_losses_data)
         self.session.commit()
 
+    def check_and_resolve_database_integrity(self):
+        last_loop_simulation = (
+            self.session.query(LoopSimulation)
+            .order_by(LoopSimulation.id.desc())
+            .first()
+        )
+
+        if last_loop_simulation and last_loop_simulation.finished_at is None:
+            self.logger.warning(
+                f"Found an incomplete LoopSimulation with ID: {last_loop_simulation.id}. Cleaning up associated data."
+            )
+
+            related_simulations = (
+                self.session.query(Simulation)
+                .filter(Simulation.loop_simulation_id == last_loop_simulation.id)
+                .all()
+            )
+
+            for simulation in related_simulations:
+                self._delete_in_batches(
+                    self.session.query(VoltageData).filter(VoltageData.simulation_id == simulation.id),
+                    batch_size=1000
+                )
+
+                self._delete_in_batches(
+                    self.session.query(EnergyMeter).filter(EnergyMeter.simulation_id == simulation.id),
+                    batch_size=1000
+                )
+
+                self._delete_in_batches(
+                    self.session.query(Compensation).filter(Compensation.simulation_id == simulation.id),
+                    batch_size=1000
+                )
+                self._delete_in_batches(
+                    self.session.query(Loss).filter(Loss.simulation_id == simulation.id),
+                    batch_size=1000
+                )
+
+            self._delete_in_batches(
+                self.session.query(Simulation).filter(Simulation.loop_simulation_id == last_loop_simulation.id),
+                batch_size=100
+            )
+
+            self.session.query(LoopSimulation).filter(LoopSimulation.id == last_loop_simulation.id).delete(
+                synchronize_session=False)
+
+            self.session.commit()
+            self.logger.info(
+                f"Incomplete LoopSimulation with ID: {last_loop_simulation.id} and related data were successfully cleaned up.")
+
+        else:
+            self.logger.info("No incomplete LoopSimulation found. Database is consistent.")
+
+    def _delete_in_batches(self, query, batch_size: int):
+        """
+        Helper function to delete records in batches.
+        :param query: SQLAlchemy Query object.
+        :param batch_size: Number of records to delete per batch.
+        """
+        deleted_count = 0
+        while True:
+            rows_deleted = query.limit(batch_size).delete(synchronize_session=False)
+            self.session.commit()
+            deleted_count += rows_deleted
+            if rows_deleted == 0:
+                break
+
+        self.logger.info(f"Deleted {deleted_count} records from {query.statement.froms[0].name}.")
+
 
 class CktSimulation:
     def __init__(self, circuit_name: str, loads_quantity: int, target_loads: str, target_file: str, database_path: str,
@@ -308,6 +377,7 @@ class CktSimulation:
 
     def execute_case_with_pl(self, pl_ev: int = 20, pl_pv: int = 20):
 
+        self.store_data.check_and_resolve_database_integrity()
         self.logger.info('---- Starting Simulation LOOP ----')
         self.calculate_eusd_data()
         self.logger.info(f'Penetration level EV: {pl_ev}%')
