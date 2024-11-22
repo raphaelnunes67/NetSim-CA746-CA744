@@ -1,29 +1,26 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
-from sqlalchemy.orm import relationship, declarative_base, sessionmaker
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
-
-class BulkSimulation(Base):
-    __tablename__ = 'bulk_simulations'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    circuit_name = Column(String(20), nullable=False)
-    pl_ev = Column(Integer)
-    pl_pv = Column(Integer)
-    loops_quantity = Column(Integer)
-    started_at = Column(DateTime)
-    finished_at = Column(DateTime)
-
-    loop_simulations = relationship("LoopSimulation", back_populates="bulk_simulation") # One to many
 
 
 class LoopSimulation(Base):
     __tablename__ = 'loop_simulations'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    bulk_simulation_id = Column(Integer, ForeignKey('bulk_simulations.id'))
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
 
-    bulk_simulation = relationship("BulkSimulation", back_populates="loop_simulations") # Many to One
+    random_target_load_ev = Column(String(200))
+    random_target_load_pv = Column(String(200))
+    random_ev_kwh = Column(String(600))
+    random_pv_shapes_possibilities = Column(String(300))
+    random_phases_ev = Column(String(600))
+    random_phases_pv = Column(String(600))
+    random_ev_chargers_power = Column(String(600))
+    random_max_power_pv = Column(String(600))
+    random_ev_shapes_by_day = Column(String(4000))
+
     simulations = relationship("Simulation", back_populates="loop_simulation") # One to many
 
 

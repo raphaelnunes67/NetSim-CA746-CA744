@@ -111,6 +111,9 @@ class MaxPowerPVKW(Enum):
     MAX_KW = 10
     MIN_KW = 5
 
+EV_CHARGER_POWER_POSSIBILITIES = [5.225, 14.167, 2.933, 2.444, 10.72, 6.286, 2.286, 3.429, 3.2, 16.4, 19.0, 6.0, 3.2,
+                                  4.989, 6.667, 6.892]
+
 
 TARGET_LOADS_CA744 = """New Load.residence1    phases=3 bus1=CA744RES1    kV=0.220  kW=2.14002976    	pf=0.92 model=1 conn=wye status=variable daily=RES-Type4-WE
     New Load.residence2    phases=3 bus1=CA744RES2    kV=0.220  kW=1.21622024      	pf=0.92 model=1 conn=wye status=variable daily=RES-Type1-WE
