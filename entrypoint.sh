@@ -17,8 +17,8 @@ COMMAND="PYTHONPATH=\"$PWD/..\" ../venv/bin/python3 main.py -c $CIRCUIT -ev $EV_
 HISTORY_FILE="../history_commands.txt"
 echo "$(date) - Command: $COMMAND" >> "$HISTORY_FILE"
 
-LOG_FILE="../simulation_logs/simulation_${CIRCUIT}_ev${EV_LEVEL}_pv${PV_LEVEL}.log"
-PID_FILE="../simulation_logs/simulation_${CIRCUIT}_ev${EV_LEVEL}_pv${PV_LEVEL}.pid"
+LOG_FILE="../simulation_${CIRCUIT}_ev${EV_LEVEL}_pv${PV_LEVEL}.log"
+PID_FILE="../simulation_${CIRCUIT}_ev${EV_LEVEL}_pv${PV_LEVEL}.pid"
 
 nohup bash -c "
 for i in {1..1000}
