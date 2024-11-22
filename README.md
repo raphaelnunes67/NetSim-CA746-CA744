@@ -14,12 +14,13 @@ by electric vehicles on the electrical grid.
 ## Running this project
 
 
-## View and stop processes
+## Important commands
 
 ```sh
 ps aux | grep main.py
 ps -p $(cat script_pid.txt)
 kill $(cat script_pid.txt)
+watch -n 1 df -h /ponto/de/montagem
 ```
 
 ## Licence
