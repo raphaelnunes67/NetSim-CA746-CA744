@@ -188,17 +188,23 @@ class StoreData:
 
     def _delete_in_batches(self, query, batch_size: int):
         """
-        Helper function to delete records in batches.
+        Helper function to delete records in batches without using query.limit().delete().
         :param query: SQLAlchemy Query object.
         :param batch_size: Number of records to delete per batch.
         """
         deleted_count = 0
+
         while True:
-            rows_deleted = query.limit(batch_size).delete(synchronize_session=False)
-            self.session.commit()
-            deleted_count += rows_deleted
-            if rows_deleted == 0:
+            records = query.limit(batch_size).all()
+
+            if not records:
                 break
+
+            for record in records:
+                self.session.delete(record)
+                deleted_count += 1
+
+            self.session.commit()
 
         self.logger.info(f"Deleted {deleted_count} records from {query.statement.froms[0].name}.")
 
