@@ -1,10 +1,9 @@
 from utils.tools import Log
 from common.constants import *
 from simulation import CktSimulation
-from multiprocessing import Process
 import sys
 import os
-
+import click
 
 def run_ca746(pl_ev: int, pl_pv: int, loops_quantity: int):
     log = Log()
@@ -30,25 +29,22 @@ def run_ca744(pl_ev: int, pl_pv: int, loops_quantity: int):
         pl_pv=pl_pv
     )
 
+@click.command()
+@click.option('-c', '--circuit', type=click.Choice(['ca746', 'ca744']), required=True,
+              help="Circuit name to simulate: 'ca746' or 'ca744'.")
+@click.option('-ev', '--electric_vehicles', type=int, required=True,
+              help="Electric vehicle penetration level (percentage).")
+@click.option('-pv', '--photovoltaics', type=int, required=True,
+              help="Photovoltaic penetration level (percentage).")
+@click.option('-l', '--loops', type=int, required=True,
+              help="Number of simulation loops.")
+def main(circuit, electric_vehicles, photovoltaics, loops):
+    if circuit == 'ca746':
+        run_ca746(pl_ev=electric_vehicles, pl_pv=photovoltaics, loops_quantity=loops)
+    elif circuit == 'ca744':
+        run_ca744(pl_ev=electric_vehicles, pl_pv=photovoltaics, loops_quantity=loops)
+
 if __name__ == '__main__':
-    # Solving paths
     sys.path.append(os.getcwd())
     sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '../')))
-
-    # Execute with functions
-    run_ca746(pl_ev=20, pl_pv=0, loops_quantity=1000)
-
-    # Execute with Multiprocess
-    # processes = [
-    #     Process(target=run_ca746, args=(20, 0, 1000)),
-    #     Process(target=run_ca746, args=(40, 0, 1000)),
-    #     Process(target=run_ca746, args=(60, 0, 1000)),
-    #     Process(target=run_ca746, args=(80, 0, 1000)),
-    #     Process(target=run_ca746, args=(100, 0, 1000)),
-    # ]
-    #
-    # for process in processes:
-    #     process.start()
-    #
-    # for process in processes:
-    #     process.join()
+    main()
