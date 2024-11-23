@@ -134,6 +134,12 @@ class StoreData:
         self.session.commit()
 
     def check_and_resolve_database_integrity(self):
+        """
+        Verifica se há um LoopSimulation incompleto (finished_at is None) e apaga todos
+        os dados relacionados, incluindo os registros em simulations, voltages_data,
+        energy_meters, compensations e losses.
+        """
+        # Buscar o último LoopSimulation
         last_loop_simulation = (
             self.session.query(LoopSimulation)
             .order_by(LoopSimulation.id.desc())
@@ -144,47 +150,29 @@ class StoreData:
             self.logger.warning(
                 f"Found an incomplete LoopSimulation with ID: {last_loop_simulation.id}. Cleaning up associated data."
             )
+            try:
 
-            related_simulations = (
-                self.session.query(Simulation)
-                .filter(Simulation.loop_simulation_id == last_loop_simulation.id)
-                .all()
-            )
+                for simulation in last_loop_simulation.simulations:
 
-            for simulation in related_simulations:
-                self._delete_in_batches(
-                    self.session.query(VoltageData).filter(VoltageData.simulation_id == simulation.id),
-                    batch_size=1000
-                )
+                    self.session.query(VoltageData).filter_by(simulation_id=simulation.id).delete()
+                    self.session.query(EnergyMeter).filter_by(simulation_id=simulation.id).delete()
+                    self.session.query(Compensation).filter_by(simulation_id=simulation.id).delete()
+                    self.session.query(Loss).filter_by(simulation_id=simulation.id).delete()
 
-                self._delete_in_batches(
-                    self.session.query(EnergyMeter).filter(EnergyMeter.simulation_id == simulation.id),
-                    batch_size=1000
-                )
+                self.session.query(Simulation).filter_by(loop_simulation_id=last_loop_simulation.id).delete()
 
-                self._delete_in_batches(
-                    self.session.query(Compensation).filter(Compensation.simulation_id == simulation.id),
-                    batch_size=1000
-                )
-                self._delete_in_batches(
-                    self.session.query(Loss).filter(Loss.simulation_id == simulation.id),
-                    batch_size=1000
-                )
+                self.session.delete(last_loop_simulation)
 
-            self._delete_in_batches(
-                self.session.query(Simulation).filter(Simulation.loop_simulation_id == last_loop_simulation.id),
-                batch_size=100
-            )
-
-            self.session.query(LoopSimulation).filter(LoopSimulation.id == last_loop_simulation.id).delete(
-                synchronize_session=False)
-
-            self.session.commit()
-            self.logger.info(
-                f"Incomplete LoopSimulation and related data were successfully cleaned up.")
-
+                self.session.commit()
+                self.logger.info(
+                    f"All data associated with LoopSimulation ID {last_loop_simulation.id} has been cleaned up.")
+            except Exception as e:
+                self.session.rollback()
+                self.logger.error(f"An error occurred while cleaning up data: {e}")
         else:
-            self.logger.info("No incomplete LoopSimulation found. Database is consistent.")
+            self.logger.info("No incomplete LoopSimulation found. Database integrity is intact.")
+
+
 
     def _delete_in_batches(self, query, batch_size: int):
         """
