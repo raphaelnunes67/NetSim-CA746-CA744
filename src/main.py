@@ -1,6 +1,7 @@
 from utils.tools import Log
 from common.constants import *
 from simulation import CktSimulation
+from pathlib import Path
 import sys
 import os
 import click
@@ -13,7 +14,7 @@ def run_ca746(pl_ev: int, pl_pv: int, db_path: str):
     simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV_{pl_pv}')
     normalized_db_path = os.path.join(normalize_path(db_path), f"database_ca746_ev_{pl_ev}_pv_{pl_pv}.db")
     CktSimulation(
-        circuit_name='ca746', loads_quantity=26, target_loads=TARGET_LOADS_CA746, target_file='dss/ca746.dss',
+        circuit_name='ca746', loads_quantity=26, target_loads=TARGET_LOADS_CA746, target_file=str(Path('dss/ca746.dss').resolve()),
         database_path=normalized_db_path, _logger=simulation_logger
     ).execute_case_with_pl(
         pl_ev=pl_ev,
@@ -25,7 +26,7 @@ def run_ca744(pl_ev: int, pl_pv: int, db_path: str):
     simulation_logger = log.set_logger_file_and_stdout(f'SIMULATION_PL_EV_{pl_ev}_PL_PV_{pl_pv}')
     normalized_db_path = os.path.join(normalize_path(db_path), f"database_ca744_ev_{pl_ev}_pv_{pl_pv}.db")
     CktSimulation(
-        circuit_name='ca744', loads_quantity=47, target_loads=TARGET_LOADS_CA744, target_file='dss/ca744.dss',
+        circuit_name='ca744', loads_quantity=47, target_loads=TARGET_LOADS_CA744, target_file=str(Path('dss/ca744.dss').resolve()),
         database_path=normalized_db_path, _logger=simulation_logger
     ).execute_case_with_pl(
         pl_ev=pl_ev,

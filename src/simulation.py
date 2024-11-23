@@ -181,7 +181,7 @@ class StoreData:
 
             self.session.commit()
             self.logger.info(
-                f"Incomplete LoopSimulation with ID: {last_loop_simulation.id} and related data were successfully cleaned up.")
+                f"Incomplete LoopSimulation and related data were successfully cleaned up.")
 
         else:
             self.logger.info("No incomplete LoopSimulation found. Database is consistent.")
