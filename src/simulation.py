@@ -14,6 +14,7 @@ from src.database.models import *
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from decimal import Decimal
 import random
 import json
 
@@ -94,9 +95,9 @@ class StoreData:
                 simulation_id=simulation_id,
                 n_res=n_res,
                 n_day=n_day,
-                v1=round(v1, 2),
-                v2=round(v2, 2),
-                v3=round(v3, 2)
+                v1=Decimal(f"{v1:.2f}"),
+                v2=Decimal(f"{v2:.2f}"),
+                v3=Decimal(f"{v3:.2f}")
             )
             for v1, v2, v3 in zip(voltages_v1, voltages_v2, voltages_v3)
         ]
@@ -199,7 +200,7 @@ class StoreData:
 
 class CktSimulation:
     def __init__(self, circuit_name: str, loads_quantity: int, target_loads: str, target_file: str, database_path: str,
-                 _logger: Logger):
+                 save_voltages_data: int, _logger: Logger):
         self.logger = _logger
         self.circuit_name = circuit_name
         self.loads_quantity = loads_quantity
@@ -209,6 +210,8 @@ class CktSimulation:
         self.eusd_data_list = []
         self.started_at = datetime.now().isoformat()
         self.store_data = StoreData(str(Path(database_path).resolve()), _logger)
+
+        self.save_voltages_data = bool(save_voltages_data)
 
     @staticmethod
     def generate_random_ev_kwh_list(enum: Type[Enum], n: int) -> List[float]:
@@ -262,14 +265,15 @@ class CktSimulation:
                 drp, drc, comp = ckt_drp_drc.calculate_from_voltages(v1_values, v2_values, v3_values)
                 comp_total_day += comp
 
-                self.store_data.save_voltages_data(
-                    simulation_id=simulation_id,
-                    n_res=load_index + 1,
-                    n_day=n_day + 1,
-                    voltages_v1=v1_values,
-                    voltages_v2=v2_values,
-                    voltages_v3=v3_values
-                )
+                if self.save_voltages_data:
+                    self.store_data.save_voltages_data(
+                        simulation_id=simulation_id,
+                        n_res=load_index + 1,
+                        n_day=n_day + 1,
+                        voltages_v1=v1_values,
+                        voltages_v2=v2_values,
+                        voltages_v3=v3_values
+                    )
 
                 load_index += 1
 
