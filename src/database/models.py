@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -48,9 +48,9 @@ class VoltageData(Base):
     simulation_id = Column(Integer, ForeignKey('simulations.id'))
     n_res = Column(Integer)
     n_day = Column(Integer)
-    v1 = Column(Float)
-    v2 = Column(Float)
-    v3 = Column(Float)
+    v1 = Column(Numeric(4, 2))
+    v2 = Column(Numeric(4, 2))
+    v3 = Column(Numeric(4, 2))
 
     simulation = relationship("Simulation", back_populates="voltages")
 
@@ -63,7 +63,7 @@ class EnergyMeter(Base):
     n_day = Column(Integer)
     n_res = Column(Integer)
     bus = Column(String(2), nullable=False)
-    energy = Column(Float)
+    energy = Column(Numeric(4, 3))
 
     simulation = relationship("Simulation", back_populates="energy_meters")
 
@@ -73,7 +73,7 @@ class Compensation(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     simulation_id = Column(Integer, ForeignKey('simulations.id'))
-    compensation = Column(Float)
+    compensation = Column(Numeric(10, 2))
 
     simulation = relationship("Simulation", back_populates="compensations")
 
@@ -84,7 +84,7 @@ class Loss(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     simulation_id = Column(Integer, ForeignKey('simulations.id'))
     n_day = Column(Integer)
-    loss = Column(Float)
+    loss = Column(Numeric(6, 3))
 
     simulation = relationship("Simulation", back_populates="losses")
 

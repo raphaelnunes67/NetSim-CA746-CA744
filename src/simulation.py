@@ -74,7 +74,7 @@ class StoreData:
             simulation.finished_at = finished_at
             self.session.commit()
         else:
-            raise ValueError(f"BulkSimulation with id {simulation_id} not found")
+            raise ValueError(f"Simulation with id {simulation_id} not found")
 
     def erase_last_simulation(self):
         last_simulation_id = (
@@ -94,9 +94,9 @@ class StoreData:
                 simulation_id=simulation_id,
                 n_res=n_res,
                 n_day=n_day,
-                v1=v1,
-                v2=v2,
-                v3=v3
+                v1=round(v1, 2),
+                v2=round(v2, 2),
+                v3=round(v3, 2)
             )
             for v1, v2, v3 in zip(voltages_v1, voltages_v2, voltages_v3)
         ]
@@ -110,7 +110,7 @@ class StoreData:
             n_res=n_res,
             n_day=n_day,
             bus=bus,
-            energy=energy
+            energy=round(energy, 3)
         )
         self.session.add(new_energy_data)
         self.session.commit()
@@ -118,7 +118,7 @@ class StoreData:
     def save_compensation(self, simulation_id: int, compensation: float):
         new_compensation_data = Compensation(
             simulation_id=simulation_id,
-            compensation=compensation
+            compensation=round(compensation, 2)
         )
 
         self.session.add(new_compensation_data)
@@ -128,7 +128,7 @@ class StoreData:
         new_losses_data = Loss(
             simulation_id=simulation_id,
             n_day=n_day,
-            loss=loss
+            loss=round(loss, 3)
         )
         self.session.add(new_losses_data)
         self.session.commit()
