@@ -30,5 +30,4 @@ done
 
 echo "Simulation process started in the background."
 echo "Logs: $LOG_FILE"
-echo "PID saved in $PID_FILE"
 echo "Command history recorded in $HISTORY_FILE."
