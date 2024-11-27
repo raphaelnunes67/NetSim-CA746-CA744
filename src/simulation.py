@@ -5,6 +5,8 @@ Simulation: 7 day of simple simulation (OpenDSS);
 """
 
 from logging import Logger
+from time import sleep
+
 from opendssdirect import dss
 from datetime import datetime
 from common.constants import *
@@ -15,6 +17,7 @@ from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from decimal import Decimal
+import sys
 import random
 import json
 
@@ -170,6 +173,11 @@ class StoreData:
             except Exception as e:
                 self.session.rollback()
                 self.logger.error(f"An error occurred while cleaning up data: {e}")
+
+        elif last_loop_simulation.id == 1000:
+            self.logger.info("Total simulation done.")
+            sleep(5)
+            sys.exit()
         else:
             self.logger.info("No incomplete LoopSimulation found. Database integrity is intact.")
 
