@@ -174,7 +174,7 @@ class StoreData:
                 self.session.rollback()
                 self.logger.error(f"An error occurred while cleaning up data: {e}")
 
-        elif last_loop_simulation.id == 1000:
+        elif last_loop_simulation and last_loop_simulation.id == 1000:
             self.logger.info("Total simulation done.")
             sleep(5)
             sys.exit()
