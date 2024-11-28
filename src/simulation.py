@@ -12,6 +12,7 @@ from datetime import datetime
 from common.constants import *
 from common.drpdrc import DrpDrc
 from typing import List, Type
+import pandas as pd
 from src.database.models import *
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
@@ -426,7 +427,7 @@ class CktSimulation:
                 random_ev_shapes_by_day=str(random_ev_shapes_by_day)
 
             )
-            for control in ('no_control', 'voltvar', 'voltwatt'):  # Controls Loop
+            for control in ('no_control', 'voltwatt',  'voltvar'):  # Controls Loop
                 comp_total = 0
                 simulation_started_at = datetime.now()
 
@@ -439,6 +440,7 @@ class CktSimulation:
 
                 for n_day, pv_shape_possibility in enumerate(random_pv_shapes_possibilities):  # Days Loop
                     self.dss_ckt = dss.NewContext()
+
                     # self.dss_ckt._enable_exceptions(do_enable=False)
                     self.dss_ckt.Basic.ClearAll()
                     self.dss_ckt.Basic.DataPath('./')
@@ -452,14 +454,17 @@ class CktSimulation:
 
                     self.dss_ckt.Text.Commands(self.target_loads)  # Insert Loads
 
+                    csv_data = pd.read_csv('data/electrical_vehicles/ev_shapes_charge.csv', header=None)
                     # EVs Loop
                     for i in range(1, ev_qty + 1):
+                        column_index = random_ev_shapes_by_day[n_day + 1][i - 1] - 1
+                        column_values = csv_data[column_index].tolist()
+                        mult_values = ' '.join(map(str, column_values))
                         self.dss_ckt.Text.Command(
                             f'New loadshape.shape_ev{i} '
                             f'npts=1440 '
                             f'minterval=1 '
-                            f'mult=(file=data/electrical_vehicles/ev_shapes_charge.csv, '
-                            f'col={random_ev_shapes_by_day[n_day + 1][i - 1]})'
+                            f'mult=({mult_values})'
                         )
 
                         phase_a, phase_b = random_phases_ev[i - 1]
