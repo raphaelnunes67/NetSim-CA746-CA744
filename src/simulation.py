@@ -427,7 +427,7 @@ class CktSimulation:
                 random_ev_shapes_by_day=str(random_ev_shapes_by_day)
 
             )
-            for control in ('no_control', 'voltwatt',  'voltvar'):  # Controls Loop
+            for control in ('no_control', 'voltvar', 'voltwatt'):  # Controls Loop
                 comp_total = 0
                 simulation_started_at = datetime.now()
 
