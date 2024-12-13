@@ -1,0 +1,1 @@
+SELECT v1, v2, v3 FROM voltages_data WHERE simulation_id = 1 AND n_res = 1 and n_day = 1;
