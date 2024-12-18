@@ -55,7 +55,7 @@ def plot_full_compensations(circuit_name):
         data_by_mode[mode] = {label: values for label, values in data_by_mode[mode].items() if values}
 
     if not any(data_by_mode[mode] for mode in control_modes):
-        print("Nenhum dado encontrado para os modos de controle em nenhum banco de dados.")
+        print("Data not found.")
     else:
         plot_data = []
         for mode in control_modes:
@@ -66,32 +66,38 @@ def plot_full_compensations(circuit_name):
 
         describe_data = df_plot.groupby(['Control Mode', 'EV | PV Penetration'])['Compensation'].describe()
         describe_data.to_csv(f'boxplot_compensation_descriptive_{circuit_name}.csv', sep=';', float_format='%.2f')
-        print(f'Data saved in boxplot_descriptive_{circuit_name}.txt')
+        print(f'Data saved in boxplot_descriptive_{circuit_name}.csv')
+
+        color_palette = {
+            'no_control': '#C0504D',
+            'voltwatt': '#9BBB59',
+            'voltvar': '#4F81BD'
+        }
 
         # Use Latex Font
-        rc('text', usetex=True)
-        rc('font', family='serif', serif=['Computer Modern'])
-        plt.figure(figsize=(14, 24))
+        # rc('text', usetex=True)
+        # rc('font', family='serif', serif=['Computer Modern'])
+        plt.figure(figsize=(20, 24))
         custom_params = {"axes.spines.right": False, "axes.spines.top": False}
-        sns.set_theme(style="darkgrid", rc=custom_params)
-        ax = sns.boxplot(gap=.4, fill=True, showfliers=False, width=1, y='EV | PV Penetration', x='Compensation',
+        sns.set_theme(style="whitegrid", rc=custom_params)
+        ax = sns.boxplot(gap=.4, fill=True, showfliers=False, width=1.1, y='EV | PV Penetration', x='Compensation',
                          hue='Control Mode', data=df_plot[df_plot['EV | PV Penetration'].isin(ordered_labels)],
-                         order=ordered_labels)
+                         order=ordered_labels, orient="h", linewidth=1.5, palette=color_palette)
         [ax.axhline(y + .5, color='gray', linestyle='--') for y in ax.get_yticks()]
-        plt.ylabel('Níveis de Penetração VE | GDFV (\%)', fontsize=26)
-        plt.xlabel('Valores de Compensação (R\$)', fontsize=26)
-        plt.tick_params(axis='x', labelsize=22)
-        plt.tick_params(axis='y', labelsize=22)
+        plt.ylabel('Níveis de Penetração VE | GDFV (%)', fontsize=34)
+        plt.xlabel('Valores de Compensação (R$)', fontsize=34)
+        plt.tick_params(axis='x', labelsize=34)
+        # plt.tick_params(axis='y', labelsize=30)
         plt.ylim(2, len(ordered_labels))
-        plt.yticks(range(len(ordered_labels)), ordered_labels, fontsize=22)
+        plt.yticks(range(len(ordered_labels)), ordered_labels, fontsize=30)
         handles, labels = plt.gca().get_legend_handles_labels()
         plt.legend(handles, ['Sem Controle', 'Com Controle Volt-VAr', 'Com Controle Volt-Watt'], title='',
-                   loc='lower right', fontsize=22)
+                   loc='lower right', fontsize=26)
 
         plt.grid(axis='x', linestyle='--', alpha=0.7, color='black')
 
         plt.tight_layout()
-        plt.savefig(f'boxplot_compensation_{circuit_name}.png')
+        plt.savefig(f'boxplot_compensation_{circuit_name}.eps', format='eps')
         print('Figure saved.')
 
 def plot_compensations():
