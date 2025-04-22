@@ -52,7 +52,7 @@ Using the [OpenDSS](https://www.epri.com/pages/sa/opendss), [py-dss-interface](h
    - Create a virtual environment:
      ```powershell
      python -m venv venv
-     .env\Scripts\Activate
+     venv\Scripts\Activate
      pip install -r requirements.txt
      ```
 
